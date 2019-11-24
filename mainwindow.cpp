@@ -15,62 +15,13 @@
 
 #include "arnoldnodedatamodel.h"
 
-#include <nodes/FlowView>
-#include <nodes/FlowScene>
-#include <nodes/Node>
-#include <nodes/NodeState>
-#include <nodes/DataModelRegistry>
-#include <nodes/NodeStyle>
-
-using QtNodes::DataModelRegistry;
-using QtNodes::FlowScene;
-using QtNodes::FlowView;
-using QtNodes::Node;
-using QtNodes::NodeState;
-using QtNodes::Connection;
-using QtNodes::NodeStyle;
-
-static std::shared_ptr<DataModelRegistry>
-registerDataModels()
-{
-    auto ret = std::make_shared<DataModelRegistry>();
-    return ret;
-}
-
-
-static void setStyle()
-{
-  NodeStyle::setNodeStyle(
-  R"(
-  {
-    "NodeStyle": {
-  "NormalBoundaryColor": [255, 255, 255],
-  "SelectedBoundaryColor": [255, 165, 0],
-  "GradientColor0": "gray",
-  "GradientColor1": [80, 80, 80],
-  "GradientColor2": [64, 64, 64],
-  "GradientColor3": [58, 58, 58],
-  "ShadowColor": [20, 20, 20],
-  "FontColor" : "white",
-  "FontColorFaded" : "gray",
-  "ConnectionPointColor": [169, 169, 169],
-  "FilledConnectionPointColor": "cyan",
-  "ErrorColor": "red",
-  "WarningColor": [128, 128, 0],
-  "PenWidth": 1.0,
-  "HoveredPenWidth": 1.5,
-  "ConnectionPointDiameter": 8.0,
-  "Opacity": 0.8
-    }
-  }
-  )");
-}
-
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    ui->tabWidget->setTabEnabled(1, false);
 
     this->setWindowTitle("Arnold Quick Param (quick.exe)");
     this->setWindowFlags(Qt::Window);
@@ -95,10 +46,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->tabWidget->setCurrentIndex(0);
     ui->splitter->setSizes({200, 600, 200});
-
-    ::setStyle();
-    m_flowScene = new FlowScene(registerDataModels(), ui->graphLayout);
-    ui->graphLayout->layout()->addWidget(new FlowView(m_flowScene));
 
     m_renderView = new RenderView(this);
     ui->render->layout()->addWidget(m_renderView);
@@ -171,108 +118,7 @@ void MainWindow::loadAssFile(bool deep)
 
                 i++;
             }
-
-            //todo: better position logic
-
-            for(const auto& node : scene.nodes)
-            {
-                auto& sceneNode = m_flowScene->createNode(std::make_unique<ArnoldNodeDataModel>(node, &Database::GetInstance()));
-                sceneNode.nodeGeometry().setSpacing(10);
-                node->sceneNode = &sceneNode;
-                m_flowScene->setNodePosition(sceneNode, QPointF(-10000.0, -10000.0));
-            }
-
-            for(Node* n : m_flowScene->allNodes())
-            {
-                ArnoldNodeDataModel* nodeModel = static_cast<ArnoldNodeDataModel*>(n->nodeDataModel());
-                ArnoldNode* node = nodeModel->GetNode();
-
-                int i=0;
-                for(const ParamValue& value : node->paramValues)
-                {
-                    for(ArnoldNode* an : value.vn)
-                    {
-                        m_flowScene->createConnection(*n, i++, *(an->sceneNode), 0);
-                    }
-                }
-            }
-
-            std::vector<Node*> nodes = m_flowScene->allNodes();
-            std::vector<Node*> haveInputs;
-            std::vector<Node*> noInputs;
-            std::vector<Node*> nodePlaced;
-
-            for(Node* n : m_flowScene->allNodes())
-            {
-                const NodeState& ns = n->nodeState();
-                const NodeState::ConnectionPtrSet& out = ns.connections(PortType::Out, 0);
-                if(out.size() == 0)
-                {
-                    bool foundOne = false;
-                    for(const auto& in : ns.getEntries(PortType::In))
-                    {
-                        if(in.size() != 0)
-                        {
-                            foundOne = true;
-                            break;
-                        }
-                    }
-
-                    if(foundOne)
-                    {
-                        haveInputs.push_back(n);
-                    }
-                    else
-                    {
-                        noInputs.push_back(n);
-                    }
-                }
-            }
-
-            int y = 0;
-            for(Node* n : haveInputs)
-            {
-                PlaceNode(n, y, 300, nodePlaced);
-            }
-
-            for(Node* n : noInputs)
-            {
-                m_flowScene->setNodePosition(*n, QPointF(300, y));
-                float yInc = n->nodeGeometry().height() + 50.f;
-                y += yInc;
-            }
         }
-    }
-}
-
-void MainWindow::PlaceNode(Node* n, int& y, int x, std::vector<Node*>& nodePlaced)
-{
-    m_flowScene->setNodePosition(*n, QPointF(x, y));
-    nodePlaced.push_back(n);
-
-    const NodeState& ns = n->nodeState();
-    for(const auto& in : ns.getEntries(PortType::In))
-    {
-        int i = 0;
-        for(const auto& conn : in)
-        {
-            Node* src = conn.second->getNode(PortType::Out);
-            if(std::find(nodePlaced.begin(), nodePlaced.end(), src) == nodePlaced.end())
-            {
-                PlaceNode(src, y, x-300, nodePlaced);
-                if(i++ > 0)
-                {
-                    float yInc = src->nodeGeometry().height() + 50.f;
-                    y += yInc;
-                }
-            }
-        }
-    }
-
-    if(ns.getEntries(PortType::In).empty())
-    {
-        float yInc = n->nodeGeometry().height() + 50.f;
-        y += yInc;
     }
 }
 

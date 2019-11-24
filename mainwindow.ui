@@ -147,9 +147,6 @@
                </item>
               </layout>
              </widget>
-             <widget class="QWidget" name="graphLayout" native="true">
-              <layout class="QHBoxLayout" name="horizontalLayout_3"/>
-             </widget>
              <widget class="QGroupBox" name="groupBox_3">
               <property name="title">
                <string>Node Details</string>

@@ -58,11 +58,8 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../../repo/ActionHero/Arnold/lib/ -lai \
-                                      -Lc:/_/arnold/build-nodeeditor-Good-Release/lib/ -lnodes \
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../../repo/ActionHero/Arnold/lib/ -lai
 
 
-INCLUDEPATH += $$PWD/../ActionHero/Arnold/include \
-            c:/_/arnold/nodeeditor/include
-DEPENDPATH += $$PWD/../repo/ActionHero/Arnold/include \
-            c:/_/arnold/nodeeditor/include
+INCLUDEPATH += $$PWD/../ActionHero/Arnold/include
+DEPENDPATH += $$PWD/../repo/ActionHero/Arnold/include
