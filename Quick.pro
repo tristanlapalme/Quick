@@ -26,19 +26,32 @@ CONFIG += c++11
 
 SOURCES += \
         arnoldnodedatamodel.cpp \
+        arnoldriver.cpp \
         database.cpp \
+        editclearwidget.cpp \
         filter.cpp \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+        nodeentrymodel.cpp \
+        quickparamwidget.cpp \
+        renderview.cpp
 
 HEADERS += \
         arnoldnodedatamodel.h \
+        arnoldriver.h \
+        color_fl.h \
         database.h \
+        editclearwidget.h \
         filter.h \
-        mainwindow.h
+        mainwindow.h \
+        nodeentrymodel.h \
+        quickparamwidget.h \
+        renderview.h
 
 FORMS += \
-        mainwindow.ui
+        editclearwidget.ui \
+        mainwindow.ui \
+        quickparamwidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -46,10 +59,10 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../../repo/ActionHero/Arnold/lib/ -lai \
-                                      -L$$PWD/../build-nodeeditor-Good-Release/lib/ -lnodes \
+                                      -Lc:/_/arnold/build-nodeeditor-Good-Release/lib/ -lnodes \
 
 
-INCLUDEPATH += $$PWD/../../../repo/ActionHero/Arnold/include \
-            $$PWD/../nodeeditor/include
-DEPENDPATH += $$PWD/../../../repo/ActionHero/Arnold/include \
-            $$PWD/../nodeeditor/include
+INCLUDEPATH += $$PWD/../ActionHero/Arnold/include \
+            c:/_/arnold/nodeeditor/include
+DEPENDPATH += $$PWD/../repo/ActionHero/Arnold/include \
+            c:/_/arnold/nodeeditor/include

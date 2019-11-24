@@ -1,8 +1,11 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#include "color_fl.h"
+
 #include <ai.h>
 
+#include <QtCore/QObject>
 #include <QtCore/QMap>
 #include <QtCore/QVector>
 #include <QtCore/QString>
@@ -21,7 +24,7 @@ struct ParamValue
     AtVector v;
     AtVector2 v2;
     //QVector<QString> s;
-    QString s;
+    std::vector<QString*> s;
     std::vector<ArnoldNode*> vn;
 
     void FromAtValue(const AtParamEntry* pe, uint8_t t);
@@ -75,10 +78,12 @@ struct Scene
     QVector<QMap<QString, QVector<ArnoldNode*>>> sceneNodeEntries;
 };
 
-class Database
+class Database : public QObject
 {
+    Q_OBJECT
+
 public:
-    Database();
+    static Database& GetInstance();
 
     void Populate();
     bool LoadScene(const QString& filename, bool deep = false);
@@ -91,11 +96,21 @@ public:
     const QStringList& GetTypes() const;
     const Scene& GetScene() const;
 
+    Color_fl* GetPixels();
+    void BuildPixels(int size);
+    void EmitPixelsReady();
+
+signals:
+    void PixelsReady();
 
 private:
+    Database();
+
     QStringList m_types;
     QMap<QString, ArnoldNodeEntry*> m_nodeEntries;
     Scene m_scene;
+
+    std::vector<Color_fl> m_pixels;
 };
 
 #endif // DATABASE_H

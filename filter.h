@@ -5,7 +5,7 @@
 #include <QtCore/QModelIndex>
 #include <QtGui/QStandardItemModel>
 
-class MainWindow;
+class QuickParamWidget;
 
 class Filter : public QSortFilterProxyModel
 {
@@ -15,7 +15,7 @@ public:
 
 
 protected:
-    MainWindow* m_mw;
+    QuickParamWidget* m_w;
     QStandardItemModel* m_model;
 };
 

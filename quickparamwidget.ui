@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QuickParamWidget</class>
+ <widget class="QWidget" name="QuickParamWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>654</width>
+    <height>427</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Node Entries</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="1">
+       <widget class="EditClearWidget" name="nodeName">
+        <property name="placeholderText">
+         <string>Filter by name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="EditClearWidget" name="nodeType">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>Filter by type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="EditClearWidget" name="nodeOutput">
+        <property name="placeholderText">
+         <string>Filter by Output</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" colspan="3">
+       <widget class="QTreeView" name="nodeEntries"/>
+      </item>
+      <item row="3" column="1" colspan="3">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>Filter node list by param values</string>
+        </property>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="EditClearWidget" name="nodeParamName">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="placeholderText">
+            <string>Filter by param name</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="EditClearWidget" name="nodeParamType">
+           <property name="placeholderText">
+            <string>Filter by param type</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Param Entries</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="1" column="0">
+       <widget class="EditClearWidget" name="paramName">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>Filter by name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="EditClearWidget" name="paramType">
+        <property name="placeholderText">
+         <string>Filter by type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QTreeView" name="paramEntries"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>EditClearWidget</class>
+   <extends>QLineEdit</extends>
+   <header>editclearwidget.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

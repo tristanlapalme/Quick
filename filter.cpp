@@ -1,12 +1,15 @@
 #include "filter.h"
 
-#include "mainwindow.h"
+#include "quickparamwidget.h"
 
 #include <QtCore/QtDebug>
 
+#include <ai.h>
+#include <QtDebug>
+
 Filter::Filter(QObject* parent, QObject* window)
     : QSortFilterProxyModel(parent)
-    , m_mw(static_cast<MainWindow*>(window))
+    , m_w(static_cast<QuickParamWidget*>(window))
 {
 
 }
@@ -26,11 +29,11 @@ bool NodeFilter::filterAcceptsRow(int source_row, const QModelIndex &source_pare
 
         QModelIndex index = item->index();
 
-        const QString nameFilter = m_mw->GetNodeNameFilter().trimmed();
-        const QString typeFilter = m_mw->GetNodeTypeFilter().trimmed();
-        const QString outputFilter = m_mw->GetNodeOutputFilter().trimmed();
-        const QString paramNameFilter = m_mw->GetNodeParamNameFilter().trimmed();
-        const QString paramTypeFilter = m_mw->GetNodeParamTypeFilter().trimmed();
+        const QString nameFilter = m_w->GetNodeNameFilter().trimmed();
+        const QString typeFilter = m_w->GetNodeTypeFilter().trimmed();
+        const QString outputFilter = m_w->GetNodeOutputFilter().trimmed();
+        const QString paramNameFilter = m_w->GetNodeParamNameFilter().trimmed();
+        const QString paramTypeFilter = m_w->GetNodeParamTypeFilter().trimmed();
 
         const QString name = item->data(Qt::UserRole).toString();
         const QString type = m_model->itemFromIndex(index.siblingAtColumn(1))->text();
@@ -51,20 +54,24 @@ bool NodeFilter::filterAcceptsRow(int source_row, const QModelIndex &source_pare
             return false;
         }
 
-        ArnoldNodeEntry* node = m_mw->GetDatabase().GetNodeEntry(name);
-        if(node != nullptr)
+        const AtNodeEntry* ne = AiNodeEntryLookUp(name.toUtf8());
+        if(ne != nullptr)
         {
             if(!paramNameFilter.isEmpty())
             {
                 bool found = false;
-                for(auto param : node->params)
+                AtParamIterator* piter = AiNodeEntryGetParamIterator(ne);
+                while (!AiParamIteratorFinished(piter))
                 {
-                    if(param->name.contains(paramNameFilter, Qt::CaseInsensitive))
+                    const AtParamEntry* pe = AiParamIteratorGetNext(piter);
+                    QString pName = AiParamGetName(pe).c_str();
+                    if(pName.contains(paramNameFilter, Qt::CaseInsensitive))
                     {
                         found = true;
                         break;
                     }
                 }
+                AiParamIteratorDestroy(piter);
 
                 if(!found)
                 {
@@ -75,14 +82,26 @@ bool NodeFilter::filterAcceptsRow(int source_row, const QModelIndex &source_pare
             if(!paramTypeFilter.isEmpty())
             {
                 bool found = false;
-                for(auto param : node->params)
+                AtParamIterator* piter = AiNodeEntryGetParamIterator(ne);
+                while (!AiParamIteratorFinished(piter))
                 {
-                    if(param->paramTypeName.contains(paramTypeFilter, Qt::CaseInsensitive))
+                    const AtParamEntry* pe = AiParamIteratorGetNext(piter);;
+                    uint8_t t = AiParamGetType(pe);
+                    QString pType = AiParamGetTypeName(t);
+                    if(AiParamGetType(pe) == AI_TYPE_ARRAY)
+                    {
+                        const AtParamValue* defaultValue = AiParamGetDefault(pe);
+                        AtArray* arr = defaultValue->ARRAY();
+                        pType = QString(AiParamGetTypeName(AiArrayGetType(arr))) + "[]";
+                    }
+
+                    if(pType.contains(paramTypeFilter, Qt::CaseInsensitive))
                     {
                         found = true;
                         break;
                     }
                 }
+                AiParamIteratorDestroy(piter);
 
                 if(!found)
                 {
@@ -108,8 +127,8 @@ bool ParamFilter::filterAcceptsRow(int source_row, const QModelIndex &source_par
 
         QModelIndex index = item->index();
 
-        const QString nameFilter = m_mw->GetParamNameFilter().trimmed();
-        const QString typeFilter = m_mw->GetParamTypeFilter().trimmed();
+        const QString nameFilter = m_w->GetParamNameFilter().trimmed();
+        const QString typeFilter = m_w->GetParamTypeFilter().trimmed();
 
         const QString name = item->text();
         const QString type = m_model->itemFromIndex(index.siblingAtColumn(1))->text();

@@ -4,6 +4,10 @@
 #include <ai.h>
 
 #include "filter.h"
+#include "nodeentrymodel.h"
+#include "quickparamwidget.h"
+
+#include "renderview.h"
 
 #include <QtGui/QStandardItem>
 #include <QtCore/QFile>
@@ -74,72 +78,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->menuBar->hide();
     ui->mainToolBar->hide();
 
-    m_nodeEntriesModel = new QStandardItemModel(this);
-    m_nodeEntriesModel->setColumnCount(3);
-    m_nodeEntriesModel->setHorizontalHeaderLabels({"Name", "Type", "Output"});
-
-    m_nodeEntriesProxyModel = new NodeFilter(m_nodeEntriesModel, this);
-    m_nodeEntriesProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    m_nodeEntriesProxyModel->setFilterKeyColumn(0);
-    m_nodeEntriesProxyModel->setSourceModel(m_nodeEntriesModel);
-
-    m_paramEntriesModel = new QStandardItemModel(this);
-    m_paramEntriesModel->setColumnCount(3);
-    m_paramEntriesModel->setHorizontalHeaderLabels({"Name", "Type", "Default"});
-
-    m_paramEntriesProxyModel = new ParamFilter(m_paramEntriesModel, this);
-    m_paramEntriesProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-    m_paramEntriesProxyModel->setFilterKeyColumn(0);
-    m_paramEntriesProxyModel->setSourceModel(m_paramEntriesModel);
-
-    m_database.Populate();
-
-    QStandardItem* root = m_nodeEntriesModel->invisibleRootItem();
-    auto nodes = m_database.GetNodeEntries();
-    auto i = nodes.constBegin();
-    while (i != nodes.constEnd())
-    {
-        QString name = i.key();
-        QString showName = (i.value()->deprecated) ? name + " [deprecated]" : name;
-        const QString& type = i.value()->nodeType;
-        const QString& output = i.value()->output;
-
-        QList<QStandardItem*> l;
-        QStandardItem* item = new QStandardItem(showName);
-        item->setData(name, Qt::UserRole);
-        l.append(item);
-        item = new QStandardItem(type);
-        item->setData(name, Qt::UserRole);
-        l.append(item);
-        item = new QStandardItem(output);
-        item->setData(name, Qt::UserRole);
-        l.append(item);
-        root->appendRow(l);
-
-        ++i;
-    }
-
-    ui->nodeEntries->setModel(m_nodeEntriesProxyModel);
-    ui->nodeEntries->setColumnWidth(0, 200);
-    ui->nodeEntries->setColumnWidth(1, 75);
-    ui->nodeEntries->setColumnWidth(2, 75);
-    ui->nodeEntries->setSortingEnabled(true);
-    ui->nodeEntries->sortByColumn(0, Qt::AscendingOrder);
-
-    ui->paramEntries->setModel(m_paramEntriesProxyModel);
-    ui->paramEntries->setColumnWidth(0, 200);
-    ui->paramEntries->setColumnWidth(1, 75);
-
-    connect(ui->nodeName, &QLineEdit::textEdited, this, &MainWindow::applyNodeEntryFilter);
-    connect(ui->nodeType, &QLineEdit::textEdited, this, &MainWindow::applyNodeEntryFilter);
-    connect(ui->nodeOutput, &QLineEdit::textEdited, this, &MainWindow::applyNodeEntryFilter);
-    connect(ui->nodeParamName, &QLineEdit::textEdited, this, &MainWindow::applyNodeEntryFilter);
-    connect(ui->nodeParamType, &QLineEdit::textEdited, this, &MainWindow::applyNodeEntryFilter);
-
-    connect(ui->paramName, &QLineEdit::textEdited, this, &MainWindow::applyParamEntryFilter);
-    connect(ui->paramType, &QLineEdit::textEdited, this, &MainWindow::applyParamEntryFilter);
-
-    connect(ui->nodeEntries, &QAbstractItemView::clicked, this, &MainWindow::nodeEntryClicked);
+    ui->paramTab->layout()->addWidget(new QuickParamWidget(this));
 
     connect(ui->loadAssFile, &QPushButton::clicked, this, &MainWindow::loadAssFile);
     connect(ui->deepLoadAssFile, &QPushButton::clicked, this, &MainWindow::deepLoadAssFile);
@@ -160,48 +99,28 @@ MainWindow::MainWindow(QWidget *parent) :
     ::setStyle();
     m_flowScene = new FlowScene(registerDataModels(), ui->graphLayout);
     ui->graphLayout->layout()->addWidget(new FlowView(m_flowScene));
+
+    m_renderView = new RenderView(this);
+    ui->render->layout()->addWidget(m_renderView);
+    connect(&Database::GetInstance(), &Database::PixelsReady, m_renderView, &RenderView::ConsumePixels);
 }
 
 MainWindow::~MainWindow()
 {
-    m_nodeEntriesModel->deleteLater();
-
     delete ui;
-}
-
-void MainWindow::applyNodeEntryFilter()
-{
-    m_nodeEntriesProxyModel->setFilterWildcard("");
-    m_paramEntriesModel->clear();
-}
-
-void MainWindow::applyParamEntryFilter()
-{
-    m_paramEntriesProxyModel->setFilterWildcard("");
-}
-
-void MainWindow::nodeEntryClicked(const QModelIndex & index)
-{
-    QModelIndex idx = m_nodeEntriesProxyModel->mapToSource(index);
-    QStandardItem* item = m_nodeEntriesModel->itemFromIndex(idx);
-    const QString& name = item->data(Qt::UserRole).toString();
-    ArnoldNodeEntry* node = m_database.GetNodeEntry(name);
-    if(node != nullptr)
-    {
-        ShowParamEntries(node);
-    }
 }
 
 void MainWindow::deepLoadAssFile()
 {
     loadAssFile(true);
+    m_renderView->ShowIt();
 }
 
 void MainWindow::nodeClicked(const QModelIndex & index)
 {
     QStandardItem* item = m_nodesModel->itemFromIndex(index);
     const QString& name = item->data(Qt::UserRole).toString();
-    ArnoldNode* node = m_database.GetScene().nodes[name];
+    ArnoldNode* node = Database::GetInstance().GetScene().nodes[name];
     if(node != nullptr)
     {
         ShowParams(node);
@@ -213,13 +132,13 @@ void MainWindow::loadAssFile(bool deep)
     QString filename = ui->assFile->text();
     if(QFile::exists(filename))
     {
-        if(m_database.LoadScene(filename, deep))
+        if(Database::GetInstance().LoadScene(filename, deep))
         {
-            const Scene& scene = m_database.GetScene();
+            const Scene& scene = Database::GetInstance().GetScene();
             QStandardItem* root = m_nodesModel->invisibleRootItem();
 
             int i = 0;
-            for(const QString& type : m_database.GetTypes())
+            for(const QString& type : Database::GetInstance().GetTypes())
             {
                 int typeCount = 0;
                 const QMap<QString, QVector<ArnoldNode*>>& map = scene.sceneNodeEntries[i];
@@ -257,7 +176,7 @@ void MainWindow::loadAssFile(bool deep)
 
             for(const auto& node : scene.nodes)
             {
-                auto& sceneNode = m_flowScene->createNode(std::make_unique<ArnoldNodeDataModel>(node, &m_database));
+                auto& sceneNode = m_flowScene->createNode(std::make_unique<ArnoldNodeDataModel>(node, &Database::GetInstance()));
                 sceneNode.nodeGeometry().setSpacing(10);
                 node->sceneNode = &sceneNode;
                 m_flowScene->setNodePosition(sceneNode, QPointF(-10000.0, -10000.0));
@@ -357,41 +276,6 @@ void MainWindow::PlaceNode(Node* n, int& y, int x, std::vector<Node*>& nodePlace
     }
 }
 
-QString MainWindow::GetNodeNameFilter()
-{
-    return ui->nodeName->text();
-}
-
-QString MainWindow::GetNodeTypeFilter()
-{
-    return ui->nodeType->text();
-}
-
-QString MainWindow::GetNodeOutputFilter()
-{
-    return ui->nodeOutput->text();
-}
-
-QString MainWindow::GetNodeParamNameFilter()
-{
-    return ui->nodeParamName->text();
-}
-
-QString MainWindow::GetNodeParamTypeFilter()
-{
-    return ui->nodeParamType->text();
-}
-
-QString MainWindow::GetParamNameFilter()
-{
-    return ui->paramName->text();
-}
-
-QString MainWindow::GetParamTypeFilter()
-{
-    return ui->paramType->text();
-}
-
 void MainWindow::DisplayParamValue(const ParamValue& pv, ArnoldParamEntry* param, QStandardItem* item) const
 {
     QString value = "";
@@ -421,8 +305,8 @@ void MainWindow::DisplayParamValue(const ParamValue& pv, ArnoldParamEntry* param
             value = (pv.b ? "true" : "false");
         break;
         case AI_TYPE_STRING:
-            //value = (!pv.s.empty()) ? pv.s.front() : "";
-            value = pv.s;
+            value = (!pv.s.empty()) ? *(pv.s.front()) : "";
+            //value = pv.s;
         break;
         case AI_TYPE_RGB:
         {
@@ -447,8 +331,8 @@ void MainWindow::DisplayParamValue(const ParamValue& pv, ArnoldParamEntry* param
         }
         break;
         case AI_TYPE_ENUM:
-            //value = ((!pv.s.empty()) ? pv.s.front() : "") + " ( ";
-            value =  pv.s + " ( ";
+            value = ((!pv.s.empty()) ? *(pv.s.front()) : "") + " ( ";
+            //value =  pv.s + " ( ";
             for(const QString& s : param->valueEnum)
             {
                 value += s + " ";
@@ -463,17 +347,17 @@ void MainWindow::DisplayParamValue(const ParamValue& pv, ArnoldParamEntry* param
             break;
             case AI_TYPE_STRING:
             {
-                for(const QString& s : pv.s)
+                for(QString* s : pv.s)
                 {
-                    value += "\"" + s + "\" ";
+                    value += "\"" + *s + "\" ";
                 }
                 break;
             }
             case AI_TYPE_BOOLEAN:
             {
-                for(const QString& s : pv.s)
+                for(QString* s : pv.s)
                 {
-                    value += "\"" + s + "\" ";
+                    value += "\"" + *s + "\" ";
                 }
                 break;
             }
@@ -494,36 +378,6 @@ void MainWindow::DisplayParamValue(const ParamValue& pv, ArnoldParamEntry* param
     }
 
     item->setText(value);
-}
-
-void MainWindow::ShowParamEntries(ArnoldNodeEntry* node)
-{
-    m_paramEntriesModel->clear();
-
-    m_paramEntriesModel->setColumnCount(3);
-    m_paramEntriesModel->setHorizontalHeaderLabels({"Name", "Type", "Default"});
-
-    ui->paramEntries->setColumnWidth(0, 250);
-    ui->paramEntries->setColumnWidth(1, 100);
-    ui->paramEntries->setSortingEnabled(false);
-
-    QStandardItem* root = m_paramEntriesModel->invisibleRootItem();
-
-    for(auto param : node->params)
-    {
-        QList<QStandardItem*> l;
-        QStandardItem* item = new QStandardItem(param->name);
-        l.append(item);
-        item = new QStandardItem(param->paramTypeName);
-        l.append(item);
-        item = new QStandardItem();
-        const ParamValue& pv  = param->value;
-        DisplayParamValue(pv, param, item);
-        l.append(item);
-        root->appendRow(l);
-    }
-
-    ui->paramEntries->setSortingEnabled(true);
 }
 
 void MainWindow::ShowParams(ArnoldNode* node)

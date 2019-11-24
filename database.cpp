@@ -1,7 +1,31 @@
 #include "database.h"
+#include "arnoldriver.h"
 
+#include <QtCore/QThread>
 #include <QtCore/QStringList>
+#include <QtCore/QCoreApplication>
+
 #include <QtDebug>
+
+class MyThread : public QThread
+{
+public:
+    explicit MyThread(const QString filename, QObject *parent = nullptr) : QThread(parent), m_filename(filename) {}
+    virtual ~MyThread() {qDebug() << "Die";}
+    void run()
+    {
+        AiBegin();
+        AiMsgSetConsoleFlags(AI_LOG_ALL);
+        InitializeArnoldDriver();
+        AiASSLoad(m_filename.toUtf8());
+        AiRender(AI_RENDER_MODE_CAMERA);
+        AiEnd();
+
+        this->deleteLater();
+    }
+
+    QString m_filename;
+};
 
 void ParamValue::FromAtValue(const AtParamEntry* pe, uint8_t t)
 {
@@ -14,13 +38,24 @@ void ParamValue::FromAtValue(const AtParamEntry* pe, uint8_t t)
     //case AI_TYPE_BOOLEAN: b.push_back(v->BOOL()); break;
     case AI_TYPE_BOOLEAN: b = v->BOOL(); break;
     case AI_TYPE_FLOAT: f = v->FLT(); break;
-    case AI_TYPE_STRING: s = v->STR().c_str(); break;
-    //case AI_TYPE_STRING: s.push_back(v->STR().c_str()); break;
+    //case AI_TYPE_STRING: s = v->STR().c_str(); break;
+    case AI_TYPE_STRING: s.push_back(new QString(v->STR().c_str())); break;
     case AI_TYPE_RGB: rgb = v->RGB(); break;
     case AI_TYPE_RGBA: rgba = v->RGBA(); break;
     case AI_TYPE_VECTOR: this->v = v->VEC(); break;
-    case AI_TYPE_ENUM: s.push_back(AiEnumGetString(AiParamGetEnum(pe), v->INT())); break;
+    case AI_TYPE_ENUM:
+    {
+        s.push_back(new QString(AiEnumGetString(AiParamGetEnum(pe), v->INT())));
+        i = v->INT();
+        break;
     }
+    }
+}
+
+Database& Database::GetInstance()
+{
+    static Database instance;
+    return instance;
 }
 
 Database::Database()
@@ -124,6 +159,22 @@ const Scene& Database::GetScene() const
     return m_scene;
 }
 
+
+Color_fl* Database::GetPixels()
+{
+    return m_pixels.data();
+}
+
+void Database::BuildPixels(int size)
+{
+    m_pixels.resize(size);
+}
+
+void Database::EmitPixelsReady()
+{
+    emit PixelsReady();
+}
+
 bool Database::LoadScene(const QString& filename, bool deep)
 {
     m_scene.name = filename;
@@ -133,13 +184,8 @@ bool Database::LoadScene(const QString& filename, bool deep)
     m_scene.sceneNodeEntries.resize(typeCount);
 
     AiBegin();
-    AiMsgSetConsoleFlags(AI_LOG_NONE);
-
+    AiMsgSetConsoleFlags(AI_LOG_ALL);
     AiASSLoad(filename.toUtf8());
-    if(deep)
-    {
-        AiRender(AI_RENDER_MODE_FREE);
-    }
 
     static const char nameLabel[] = "name";
 
@@ -258,13 +304,13 @@ bool Database::LoadScene(const QString& filename, bool deep)
                 case AI_TYPE_STRING:
                 {
                     QString s = AiNodeGetStr(atNode, pe->name.toUtf8()).c_str();
-                    //if(!pe->value.s.empty() && pe->value.s.front() == s)
-                    if(pe->value.s == s)
+                    if(!pe->value.s.empty() && pe->value.s.front() == s)
+                    //if(pe->value.s == s)
                         continue;
 
                     ParamValue pv;
                     //pv.s.push_back(s);
-                    pv.s = s;
+                    pv.s.push_back(new QString(s));
                     node->paramValues[pe->name] = pv;
                     break;
                 }
@@ -312,14 +358,14 @@ bool Database::LoadScene(const QString& filename, bool deep)
                 }
                 case AI_TYPE_ENUM:
                 {
-                    const QString& s = pe->valueEnum.at(AiNodeGetInt(atNode, pe->name.toUtf8()));
-                    //if(!pe->value.s.empty() && pe->value.s.front() == s)
-                    if(pe->value.s == s)
+                    int i = AiNodeGetInt(atNode, pe->name.toUtf8());
+                    if(pe->value.i == i)
+                    //if(pe->value.s == s)
                         continue;
 
                     ParamValue pv;
                     //pv.s.push_back(s);
-                    pv.s = s;
+                    pv.s.push_back(new QString(pe->valueEnum[i]));
                     node->paramValues[pe->name] = pv;
                     break;
                 }
@@ -360,6 +406,29 @@ bool Database::LoadScene(const QString& filename, bool deep)
     }
 
     AiEnd();
+
+    if(deep)
+    {
+        BuildPixels(400*400);
+        MyThread* thread = new MyThread(filename);
+        thread->start();
+    }
+
+
+    /*
+    AiBegin();
+    AiMsgSetConsoleFlags(AI_LOG_ALL);
+
+    InitializeArnoldDriver();
+    AiASSLoad(filename.toUtf8());
+    if(deep)
+    {
+        BuildPixels(400*400);
+        AiRender(AI_RENDER_MODE_CAMERA);
+    }
+
+    AiEnd();
+    */
 
     return true;
 }
