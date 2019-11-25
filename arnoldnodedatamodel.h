@@ -13,8 +13,8 @@ using QtNodes::NodeData;
 using QtNodes::NodeDataType;
 using QtNodes::NodeDataModel;
 
-struct ArnoldNode;
-class Database;
+struct AtNode;
+struct AtNodeEntry;
 
 class MyNodeData : public NodeData
 {
@@ -30,7 +30,7 @@ class ArnoldNodeDataModel : public NodeDataModel
     Q_OBJECT
 
 public:
-    ArnoldNodeDataModel(ArnoldNode* node, Database* database);
+    ArnoldNodeDataModel(const AtNode* node, const AtNodeEntry* nodeEntry);
     virtual ~ArnoldNodeDataModel() override {}
 
     static QString Name() { return QString("ArnoldNodeDataModel"); }
@@ -46,11 +46,16 @@ public:
     virtual void setInData(std::shared_ptr<NodeData> data, int) override;
     virtual QWidget* embeddedWidget() override;
 
-    ArnoldNode* GetNode() const { return m_node; }
+    const AtNode* GetNode() const { return m_node; }
+    const AtNode* GetInput(int portIndex) const;
 
 private:
-    ArnoldNode* m_node{nullptr};
-    Database* m_database{nullptr};
+    const AtNode* m_node{nullptr};
+    const AtNodeEntry* m_nodeEntry{nullptr};
+    QString m_name;
+    QString m_entryName;
+    QStringList m_inputs;
+    QList<AtNode*> m_srcs;
 };
 
 

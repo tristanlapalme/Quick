@@ -1,6 +1,6 @@
 #include "renderview.h"
 
-#include "database.h"
+#include "pixelbuffer.h"
 
 #include <QtGui/QPainter>
 #include <QtDebug>
@@ -58,7 +58,7 @@ void RenderView::ConsumePixels()
 void RenderView::ShowIt()
 {
     int size = 400*400;
-    Color_fl* colors = Database::GetInstance().GetPixels();
+    Color_fl* colors = PixelBuffer::GetInstance().GetPixels();
 
     for(int i=0; i<size; i++)
     {

@@ -1,5 +1,5 @@
 #include "arnoldriver.h"
-#include "database.h"
+#include "pixelbuffer.h"
 
 #include <QtDebug>
 
@@ -11,7 +11,7 @@ void DriverData::Initialize()
     m_xres = AiNodeGetInt(options, "xres");
     m_yres = AiNodeGetInt(options, "yres");
 
-    m_pixels = Database::GetInstance().GetPixels();
+    m_pixels = PixelBuffer::GetInstance().GetPixels();
 }
 
 void DriverData::PutPixel(const std::string& aovName, const AtRGB &in_rgb, const int in_x, const int in_y)
@@ -269,7 +269,7 @@ driver_process_bucket
         }
     }
 
-    Database::GetInstance().EmitPixelsReady();
+    PixelBuffer::GetInstance().EmitPixelsReady();
 }
 
 driver_close {}

@@ -27,31 +27,34 @@ CONFIG += c++11
 SOURCES += \
         arnoldnodedatamodel.cpp \
         arnoldriver.cpp \
-        database.cpp \
         editclearwidget.cpp \
         filter.cpp \
         main.cpp \
         mainwindow.cpp \
         nodeentrymodel.cpp \
+        pixelbuffer.cpp \
         quickparamwidget.cpp \
+        quickscenewidget.cpp \
         renderview.cpp
 
 HEADERS += \
         arnoldnodedatamodel.h \
         arnoldriver.h \
         color_fl.h \
-        database.h \
         editclearwidget.h \
         filter.h \
         mainwindow.h \
         nodeentrymodel.h \
+        pixelbuffer.h \
         quickparamwidget.h \
+        quickscenewidget.h \
         renderview.h
 
 FORMS += \
         editclearwidget.ui \
         mainwindow.ui \
-        quickparamwidget.ui
+        quickparamwidget.ui \
+        quickscenewidget.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

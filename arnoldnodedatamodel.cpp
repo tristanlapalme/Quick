@@ -1,20 +1,39 @@
 #include "arnoldnodedatamodel.h"
-#include "database.h"
+
+#include <ai.h>
 #include <QtDebug>
 
-ArnoldNodeDataModel::ArnoldNodeDataModel(ArnoldNode* node, Database* database)
-    : m_node(node), m_database(database)
+ArnoldNodeDataModel::ArnoldNodeDataModel(const AtNode* node, const AtNodeEntry* nodeEntry)
+    : m_node(node)
+    , m_nodeEntry(nodeEntry)
 {
+    m_name = AiNodeGetStr(node, "name");
+    m_entryName = AiNodeEntryGetName(AiNodeGetNodeEntry(node));
+
+    AtParamIterator* piter = AiNodeEntryGetParamIterator(nodeEntry);
+    while (!AiParamIteratorFinished(piter))
+    {
+        const AtParamEntry* pe = AiParamIteratorGetNext(piter);
+        QString pName = AiParamGetName(pe).c_str();
+        if(AiNodeIsLinked(node, pName.toUtf8()))
+        {
+            m_inputs.append(pName);
+            AtNode* src = AiNodeGetLink(node, pName.toUtf8());
+            m_srcs.append(src);
+        }
+
+    }
+    AiParamIteratorDestroy(piter);
 }
 
 QString ArnoldNodeDataModel::caption() const
 {
-    return m_node->name + " : " + m_node->nodeEntry->name;
+    return m_name + " : " + m_entryName;
 }
 
 QString ArnoldNodeDataModel::name() const
 {
-    return m_node->name;
+    return m_name;
 }
 
 unsigned int ArnoldNodeDataModel::nPorts(PortType portType) const
@@ -24,10 +43,7 @@ unsigned int ArnoldNodeDataModel::nPorts(PortType portType) const
     switch (portType)
     {
     case PortType::In:
-        for(auto value : m_node->paramValues)
-        {
-            result += static_cast<unsigned int>(value.vn.size());
-        }
+        return m_inputs.size();
         break;
     case PortType::Out:
         //result = m_node->nodeEntry->output.isEmpty() ? 0 : 1;
@@ -51,22 +67,7 @@ QString ArnoldNodeDataModel::portCaption(PortType portType, PortIndex portIndex)
     {
     case PortType::In:
     {
-        int i = 0;
-        int total = 0;
-        for(auto value : m_node->paramValues)
-        {
-            int size = static_cast<int>(value.vn.size());
-            if(portIndex < total + size)
-            {
-                return m_node->paramValues.keys()[i];
-            }
-            else
-            {
-                total += size;
-            }
-            i++;
-        }
-        break;
+        return m_inputs.at(portIndex);
     }
     case PortType::Out:
         switch (portIndex)
@@ -96,4 +97,9 @@ void ArnoldNodeDataModel::setInData(std::shared_ptr<NodeData> /*data*/, int)
 QWidget* ArnoldNodeDataModel::embeddedWidget()
 {
     return nullptr;
+}
+
+const AtNode* ArnoldNodeDataModel::GetInput(int portIndex) const
+{
+    return m_srcs.at(portIndex);
 }
